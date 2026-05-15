@@ -339,14 +339,109 @@ Stop and fix the workflow if any of these appear:
 - release restore was tested only over an already-patched local install
 - release ZIP contains original game bundles, assets, executables, or full data directories
 
+## Multi-Agent Parallel Work
+
+Use parallel subagents when the translation workload is large enough that sequential processing would be impractical. The orchestrating agent manages the knowledge base; subagents only translate or polish within a bounded scope.
+
+### When to parallelize
+
+- Character dialogue polish: one subagent per character or character group
+- Category batching: one subagent per category (UI, items, quests, dialogue) when categories are independent
+- Platform divergence: run Steam and Xbox working-set updates concurrently after a common diff pass
+- Lore pass across multiple file families: subagents read different source families in parallel and report candidates back to the orchestrator
+
+Do not parallelize before `lore_packet`, `style_bible`, and `glossary` are stable. Subagents that lack shared terminology will produce inconsistent output that costs more to fix than parallelism saves.
+
+### Orchestrator responsibilities
+
+- Hold and update the canonical `glossary`, `style_bible`, and `lore_packet`
+- Assign each subagent a bounded scope: exact character name(s), category slice, or platform
+- Provide each subagent with: relevant glossary excerpt, tone card(s), source working set slice, and output format spec
+- Collect subagent proposals before accepting them — require `key`, `source`, `old_target`, `new_target`, `reason`, `confidence`, `surface`, `speaker` fields
+- Merge accepted proposals back into the master working set
+- Run QA gates on the merged output, not on individual subagent outputs
+
+### Subagent instructions template
+
+When spawning a subagent for character tone polish, include:
+
+```
+You are polishing Korean dialogue for [CHARACTER NAME].
+Tone card: [speech level, relationship to player, verbal habits, exceptions]
+Glossary: [relevant excerpt]
+Style bible rules: [relevant rules]
+Source: [working set slice — key, source, current_target columns]
+Output: for each changed line, return key / source / old_target / new_target / reason / confidence
+Do not change keys, placeholders, tags, or schema.
+Do not invent new proper nouns not in the glossary.
+Goal: Korean a local player would accept in this game context, not lightly post-edited machine translation.
+```
+
+### Character review pack workflow
+
+Before assigning tone polish subagents:
+
+1. Build the alias registry (`dialog_character_alias_registry.tsv`) — map all key patterns to canonical character names
+2. Build scene overrides (`dialog_speaker_scene_overrides.tsv`) — handle aliasless scenes
+3. Generate a per-character review pack: pull all `talk/chat/gift/shop/mail/date/bubble/mission/online` keys for that character together
+4. Assign one subagent per character pack, not per file prefix
+5. After subagents return proposals, update the alias registry if unresolved patterns were found
+
+### Parallel session management
+
+When running multiple Codex subagent sessions concurrently:
+
+- Give each session a distinct `AGENTS.md` or inline context that includes its assigned scope, glossary slice, and tone cards
+- Use a shared working directory or branch per agent to avoid file conflicts
+- Collect outputs to a merge staging area before committing to the master working set
+- The orchestrator reviews merged proposals before any QA gate run
+
 ## Engine Routing
 
 After discovery, load only the relevant adapter reference:
 - Unity or AssetBundle-heavy layout: `references/adapter-unity.md`
 - Unreal or `.locres`/`.uasset` layout: `references/adapter-unreal.md`
 - JSON/CSV/TSV/XLSX-heavy layout: `references/adapter-table-files.md`
+- Cartridge-era ROM (SNES, GBA, NDS, PS1, etc.): `references/adapter-retro-rom.md`
 
 If multiple engines or storage modes appear, prefer the cheapest high-confidence text path first and document fallbacks in the `engine_report`.
+
+## Font Insertion
+
+Font work is required whenever the game does not natively support Korean glyphs. This is almost always true for retro ROMs and common for older Unity/Unreal titles.
+
+### When font work is needed
+
+- Game renders Korean as boxes, question marks, or missing glyphs
+- Source game ships only with Latin or Japanese fonts
+- Custom tile-based font engine (common in retro ROMs)
+
+### General font checklist
+
+1. **Identify font storage** — tile set in ROM, font atlas texture in Unity/Unreal, or TTF/OTF embedded in assets
+2. **Extract the existing font** — tile editor for ROMs; AssetStudio or similar for Unity; UAssetGUI or similar for Unreal
+3. **Design or source a Korean glyph set** matching the tile size or atlas format
+4. **Check glyph bounds**: height, descent, and width — Korean syllables are wider and taller than Latin; verify nothing is clipped at the bottom or right
+5. **Insert the font** at the correct location and update encoding/atlas tables
+6. **Test across multiple surfaces**: main menu, dialogue boxes, item descriptions, status screens, save/load, tutorials
+7. **Patch line spacing or text-box size** if glyphs overflow the rendered area
+
+### Retro ROM font specifics
+
+See `references/adapter-retro-rom.md` — Font insertion section for ROM-specific steps (tile extraction, encoding table mapping, pointer updates, common clipping fixes).
+
+### Unity font specifics
+
+- Replace or supplement the font asset in the bundle with a Korean-capable TTF/OTF
+- For TMP (TextMeshPro): generate a new TMP font asset with Korean glyph range included
+- For legacy UI Text: replace the font asset reference in the relevant `.assets` or bundle file
+- Verify fallback font chain in case not all glyphs are covered
+
+### Unreal font specifics
+
+- Replace the font face asset with a Korean-capable font
+- Verify composite font fallback chain covers the full Hangul syllable block
+- Test in at least two widget classes (HUD and menu) since they may reference different font assets
 
 ## Common Mistakes
 

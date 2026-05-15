@@ -8,13 +8,15 @@ Produce these artifacts in order:
 1. `engine_report`
 2. `localization_asset_inventory`
 3. `lore_packet`
-4. `translation_plan`
-5. `translated_working_set`
-6. `qa_report`
-7. `playtest_pack`
-8. `release_decision`
-9. `release_package`
-10. `release_notice`
+4. `localization_quality_standard`
+5. `style_bible`
+6. `translation_plan`
+7. `translated_working_set`
+8. `qa_report`
+9. `playtest_pack`
+10. `release_decision`
+11. `release_package`
+12. `release_notice`
 
 Do not skip an artifact because the game "looks simple." The point is reproducibility.
 
@@ -44,6 +46,13 @@ Do not skip an artifact because the game "looks simple." The point is reproducib
 - Update `lore_packet`, glossary, and "do not drift" terminology from the extracted text.
 - Record unresolved names or ambiguous terms with conservative temporary translations instead of silently guessing.
 - Do this even if web research already exists; public sources often miss the exact in-game wording.
+
+### 3.7 Localization quality standard and style bible
+
+- Write a `localization_quality_standard` before main translation: what "good Korean" means for this game, target audience readability, surface-specific style, naturalness rules, common literalness risks with before/after examples, and LQA gates.
+- Convert the lore packet into an enforceable `style_bible`: canonical Korean names for people, places, factions, items, events; forbidden or deprecated translations with reasons; character tone cards (speech level, relationship to player, verbal habits, exceptions); localization policy for culture-specific terms.
+- Both documents are living control documents — update them from evidence (playtest findings, QA failures, repeated patterns), never from personal preference alone.
+- Do not start bulk translation until both documents exist.
 
 ### 4. Translation planning
 
