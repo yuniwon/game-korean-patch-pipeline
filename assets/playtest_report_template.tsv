@@ -1,0 +1,2 @@
+issue_id	severity	area	location	source_text	current_ko	issue_type	symptom	reproduction	suggested_fix	status	notes
+PT-001	medium	UI	Main Menu	Start Game	Game Start	wording	Awkward phrasing	Open the title screen	Use a more natural button label	open	

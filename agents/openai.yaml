@@ -1,0 +1,4 @@
+interface:
+  display_name: "Game Korean Patch Pipeline"
+  short_description: "Korean game localization, QA, and release packaging"
+  default_prompt: "Use $game-korean-patch-pipeline to start, update, test, or release a Korean game patch, including source diffs, platform-specific text assets, lore passes, QA gates, clean install/restore checks, beginner-friendly patchers, and release notices."
