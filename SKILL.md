@@ -9,19 +9,21 @@ description: Use when starting, maintaining, testing, or releasing a Korean game
 
 Use this skill to turn an unfamiliar game or a live Korean patch into a structured localization workflow. The core principle is: `discover -> research -> plan -> translate or sync -> QA -> playtest -> release`, with humans acting mainly as testers rather than full-time line reviewers.
 
-There are two operating modes:
-- **Bootstrap mode**: start a new or poor-quality localization from extracted text.
-- **Maintenance mode**: update an existing patch after game updates, user reports, platform divergence, or release-tool regressions.
+Modes: **Bootstrap** starts a new or poor-quality localization from extracted text; **Maintenance** updates an existing patch after game updates, user reports, platform divergence, or release-tool regressions.
 
 ## Required Outputs
 
 Do not begin main translation until these artifacts exist:
 - `engine_report`
 - `localization_asset_inventory`
+- `extraction_manifest`
+- `source_language_matrix`
 - `lore_packet`
 - `localization_quality_standard`
 - `style_bible`
 - `translation_plan`
+- `agent_batch_contracts`
+- `quality_scorecard`
 
 Do not hand work to playtest until these artifacts exist:
 - `translated_working_set`
@@ -35,8 +37,15 @@ For a live patch maintenance pass, require these artifacts instead:
 - `reviewed_change_log`
 - `regression_watchlist`
 - `updated_working_sets`
+- `runtime_text_surface_inventory`
+- `platform_runtime_delta_report`
 - `qa_delta_report`
 - `release_decision`
+- `release_notice_full_template`
+
+## Quality Scorecard
+
+Use exactly five numeric criteria, each scored from `0` to `100` with a pass threshold of `95`: discovery/extraction coverage, context/source-language control, segmentation/agent orchestration, Korean localization quality, and technical/runtime/release QA. Any hard failure caps the relevant criterion at `94`. Read `references/quality-scorecard.md` when creating or evaluating the scorecard. Before translation, criteria `1`, `2`, and `3` must be at least `95`; before playtest, criteria `3`, `4`, and `5` must be at least `95`; before public release, all five must be at least `95`.
 
 ## Quick Start
 
@@ -44,26 +53,32 @@ For a live patch maintenance pass, require these artifacts instead:
 
 1. Detect the engine and patching risk with `scripts/detect_engine.py`.
 2. Inventory candidate text assets with `scripts/scan_localization_assets.py`.
-3. Research the game on the web and compile a lore packet with `scripts/build_lore_packet.py`.
-4. Write a project-specific localization quality standard: what "good Korean" means for this game, surface-specific style, literalness risks, LQA gates, and examples.
-5. Convert lore into an enforceable style bible: canonical names, forbidden renderings, tone cards, and examples.
-6. Split content into categories and risks with `scripts/build_translation_plan.py`.
-7. Translate into a working dataset only. Do not patch original game assets yet.
-8. Score risky rows with `scripts/score_translation_risk.py`.
-9. Build a tester-facing issue sheet with `scripts/build_playtest_report_template.py`.
+3. Build an `extraction_manifest`: source paths, commands, hashes, extracted row counts, language files, failed assets, and runtime-only candidates.
+4. Build a `source_language_matrix`: available languages, likely original language, quality/alignment signals, controlling source by surface, and fallback reasons.
+5. Research the game on the web and compile a lore packet with `scripts/build_lore_packet.py`.
+6. Read high-signal extracted lore, diaries, item descriptions, quests, and dialogue headers before locking names.
+7. Write a project-specific localization quality standard: what "good Korean" means for this game, surface-specific style, literalness risks, LQA gates, and examples.
+8. Convert lore into an enforceable style bible: canonical names, forbidden renderings, tone cards, and examples.
+9. Split content into categories and risks with `scripts/build_translation_plan.py`.
+10. Build `agent_batch_contracts` before dispatching work; each contract names the category, controlling source language, references, glossary/tone rules, output schema, and QA gates.
+11. Translate into a working dataset only. Do not patch original game assets yet.
+12. Score risky rows with `scripts/score_translation_risk.py` and keep high-risk rows in smaller review batches.
+13. Maintain the five-part `quality_scorecard`; do not advance if any required criterion is below `95`.
+14. Build a tester-facing issue sheet with `scripts/build_playtest_report_template.py`.
 
 ### Maintenance mode
 
 1. Re-extract the current game text and compare it against the last supported source.
-2. Split the diff into `added`, `removed`, `changed`, and `unchanged-but-platform-specific`.
-3. Safe-sync mechanical rows first; send semantic changes to manual or high-context review.
-4. Update the localization quality standard, style bible, and regression watchlist before touching working sets.
-5. Update common and platform-specific working sets separately.
-6. For dialogue or character text, generate character review packs from the extracted scripts/working sets and review by character before editing tone.
-7. Rebuild inject/patch assets from working sets, not from edited game bundles.
-8. Run QA gates: JSON parse, token/tag preservation, glossary, source-anchored mistranslation audit, speaker tone, Korean naturalness/literalness, UI length, mixed-language audit, regression watchlist, and platform-specific smoke checks.
-9. Decide release strategy: same asset replacement only for non-auto-updater patches; new tag when existing launchers must detect an update.
-10. Write a concise release note in user language, then package and verify the published asset digest.
+2. Inventory runtime text surfaces as well as the main localization table; cutscene subtitles, track display names, compressed subtitle assets, and platform supplements can change even when the main table is byte-identical.
+3. Split the diff into `added`, `removed`, `changed`, `runtime-only`, and `unchanged-but-platform-specific`.
+4. Safe-sync mechanical rows first; send semantic changes to manual or high-context review.
+5. Update the localization quality standard, style bible, and regression watchlist before touching working sets.
+6. Update common and platform-specific working sets separately; keep platform inject paths separate even after proven source parity.
+7. For dialogue or character text, generate character review packs from the extracted scripts/working sets and review by character before editing tone.
+8. Rebuild inject/patch assets from working sets, not from edited game bundles.
+9. Run QA gates: JSON parse, token/tag preservation, glossary, source-anchored mistranslation audit, speaker tone, Korean naturalness/literalness, UI length, mixed-language audit, regression watchlist, runtime subtitle coverage, and platform-specific smoke checks.
+10. Decide release strategy: same asset replacement only for non-auto-updater patches; new tag when existing launchers must detect an update.
+11. Write release notes and public notices from the durable full template, then package and verify the published asset digest.
 
 Read these references only when needed:
 - `references/workflow.md` for the full order of operations
@@ -71,6 +86,9 @@ Read these references only when needed:
 - `references/glossary-rules.md` when deciding terminology or tone
 - `references/category-design.md` before batching or parallel translation
 - `references/qa-gates.md` before merge, packaging, or playtest handoff
+- `references/quality-scorecard.md` when scoring the five `95`-point acceptance gates
+- `references/multi-agent-workflow.md` before dispatching parallel translation agents
+- `references/font-insertion.md` when Korean glyph rendering or font replacement is required
 - `references/adapter-unity.md`, `references/adapter-unreal.md`, or `references/adapter-table-files.md` after engine discovery
 - `assets/release_notice_template_ko.md` when drafting Korean distribution posts, GitHub release notes, or user-facing patch notices
 
@@ -101,14 +119,27 @@ If the project already has an equivalent document, read it before translating an
 
 ### 2.3 Prefer source languages by surface
 
-When the game provides both Japanese and English, do not assume English is the best translation base.
+Do not assume English, Japanese, or the game's original language is always the best translation base. Choose a controlling source per surface and record it in `source_language_matrix`.
 
 Default hierarchy:
-- Character dialogue, subtitles, emotional intent, speech level, sentence rhythm, jokes, sarcasm, and relationship distance: Japanese first, English second.
-- UI labels, item names, location names, system terms, quest conditions, crafting materials, and already-approved glossary terms: approved glossary/current Korean first, then cross-check Japanese and English.
-- If Japanese is missing, low quality, clearly mistranslated, or too compressed to identify a term, use English as the primary source for that row.
+- Character dialogue, subtitles, emotional intent, speech level, sentence rhythm, jokes, sarcasm, and relationship distance: Japanese first when it is present, aligned, and high quality because its honorifics, omissions, and distance markers often map better to Korean.
+- If Japanese is missing, low quality, clearly mistranslated, over-compressed, machine-like, or weaker than the original language, use the original language or the best available source for that surface and record why Japanese was not controlling.
+- UI labels, item names, location names, system terms, quest conditions, crafting materials, and already-approved glossary terms: approved glossary/current Korean first, then original/English source evidence, then Japanese for nuance.
+- If multiple source languages disagree, preserve game function and established terminology first; send emotional or lore ambiguity to the evidence queue rather than guessing.
 
 Japanese often carries honorifics, casual/polite contrast, omissions, kanji nuance, and word order that map better to Korean than English. Use that advantage for tone and prose, but do not create new Korean proper nouns from Japanese when the English source or project glossary already establishes the game term.
+
+### 2.4 Build a source-language matrix before batching
+
+For every source family or representative row group, record:
+- `surface`: UI, item, quest, dialogue, subtitle, texture/image, launcher, system, or other.
+- `available_languages`: language files or columns found, with row counts and missing rates.
+- `original_language`: known, inferred, or unknown, with evidence.
+- `alignment_quality`: row/key parity, placeholder parity, obvious truncation, machine-localized artifacts, and semantic disagreement.
+- `controlling_source`: the language used for Korean decisions on that surface.
+- `fallback_reason`: why a normally preferred language was not used.
+
+The matrix is a gate artifact, not a note. Batch prompts, agent contracts, QA reports, and reviewed change logs must reference it.
 
 ### 2.5 Turn lore into enforceable style rules
 
@@ -134,6 +165,8 @@ When updating them, record the reason and make the rule reusable. Avoid adding p
 
 Do not translate a monolithic dump of mixed UI, dialogue, quests, and item text. Split content into stable categories, note risk level, and batch only within safe consistency boundaries.
 
+For dispatching work to other agents, create one contract per batch. Minimum fields: `batch_id`, `surface`, `risk_tier`, `controlling_source_language`, `source_paths`, `row_count`, `required_references`, `glossary_refs`, `tone_refs`, `forbidden_patterns`, `output_schema`, `allowed_actions`, `qa_before_apply`, and `scorecard_criteria_touched`. Dialogue and subtitle contracts must also include speaker evidence or a rule that the agent must skip unresolved speakers.
+
 ### 4. Translate working sets, not original assets
 
 Write translations into extracted or generated working files. Do not overwrite original game assets during early passes. Treat direct injection or repacking as an explicit later stage gated by QA.
@@ -145,6 +178,10 @@ Do not change keys or schema. Preserve placeholders, format tokens, rich-text ta
 ### 5.5 Do not ship raw machine translation
 
 Machine translation or AI draft output may be used only as a rough aid, never as accepted final text. Final Korean must be manually localized against source meaning, extracted lore, glossary, speaker tone, UI surface, and Korean gamer readability. Rewrite literal or stiff lines instead of lightly post-editing them.
+
+### 5.6 Communication brevity does not apply to localized output
+
+Compressed agent modes or terse status updates are only for coordination with the user. They must not shorten Korean translations, remove nuance, or flatten dialogue. Shorten target text only when the surface itself requires it, such as a UI label, button, or hard layout limit, and record that as a surface decision.
 
 ### 6. Treat humans as testers
 
@@ -173,6 +210,14 @@ If Steam, Xbox PC, Game Pass, console, or beta branches ship different text asse
 - one install-time selector that chooses the correct inject/patch asset by game path or platform metadata
 
 Always verify platform-specific user reports against that platform's source, not against the other platform's bundle.
+
+### 8.5 Runtime subtitle surfaces are separate localization surfaces
+
+For Unity and asset-bundle projects, do not treat the main localization table as the whole subtitle system. User screenshots of English cutscene text must be verified against all known runtime subtitle surfaces, including `TIMELINE:*` rows, `PerformanceSubtitle` JSON fields, compressed MessagePack/LZ4 `PerformanceSubtitle` TextAssets, `KSubtitleClip.Template.content`, subtitle track display names such as `K Subtitle Track.m_Clips[*].m_DisplayName`, and platform-specific supplemental JSON. A cutscene fix is not complete until the patcher consumes every required supplemental source and the runtime subtitle missing count is zero for each supported platform.
+
+### 8.6 Platform parity is evidence, not permission to collapse forks
+
+Steam and Xbox/Game Pass may become byte-identical for a source table after an update, but that must be proven by current hashes, build IDs, package versions, row counts, and missing-key checks. After parity is proven, syncing one platform from another is allowed, but keep platform-specific source baselines, inject assets, install-time selectors, and release checks. If the main table is unchanged but runtime subtitle surfaces changed, ship a release anyway when users need the launcher to detect the update.
 
 ### 9. Count completion by outcome, not just translated rows
 
@@ -210,6 +255,8 @@ When extracted scripts or working sets are available, build a character-scoped r
 Each per-character review pack should include platform, speaker confidence, alias, canonical name, tone policy, surface, risk flags, key, source, and current target. Use it to read all `talk/chat/gift/shop/mail/date/bubble/mission/online` lines for that character together.
 
 Do not edit from the pack blindly. Treat player choices, UI labels, narration, ambient self-talk, and mixed-cast scenes as separate review classes. If real character speech appears in the unresolved/mixed pack, update the alias registry or scene override first, regenerate the packs, then edit.
+
+For unfamiliar games, create the equivalent of these artifacts even if filenames differ: `speaker_alias_registry`, `speaker_scene_overrides`, `speaker_evidence_index`, `speaker_worksets`, and `unresolved_or_mixed_queue`. Use engine-native dialogue metadata first when available, then file/path/key hints, then source text and scene context. A speaker pass cannot score `95` in segmentation if it relies only on key prefixes while better speaker evidence exists.
 
 ### 10.5 Naturalness pass is separate from correctness
 
@@ -313,6 +360,8 @@ Stop and fix the workflow if any of these appear:
 - setting or lore docs exist but batch prompts and QA gates do not consume them
 - no project-specific localization quality standard exists before main translation
 - the quality standard exists but translators or QA gates do not consume it
+- `source_language_matrix`, `agent_batch_contracts`, or `quality_scorecard` is missing before batch translation
+- any required quality scorecard criterion is below `95` and work advances anyway
 - UI, dialogue, and item text are mixed into one batch
 - original game assets are patched before QA
 - testers are expected to review every line manually
@@ -329,6 +378,9 @@ Stop and fix the workflow if any of these appear:
 - a source proper noun appears but the canonical Korean name is absent
 - a facility name is translated as another facility because both are in the same domain
 - Steam/Xbox source values differ but one Korean value is copied to both
+- platform source parity is assumed without current hashes, build IDs, package versions, and missing-key checks
+- cutscene subtitle fixes only patch the main localization table or `TIMELINE:*` rows while runtime subtitle assets remain unverified
+- a release is skipped because the main source table is unchanged even though runtime text surfaces changed
 - a playtest bug is fixed once but not added to glossary, style bible, or regression watchlist
 - a playtest bug about stiffness or literalness is fixed once but not added to the quality standard or naturalness watchlist
 - the Korean is fluent but uses an uncommon term where Korean gamers expect a conventional term
@@ -341,60 +393,7 @@ Stop and fix the workflow if any of these appear:
 
 ## Multi-Agent Parallel Work
 
-Use parallel subagents when the translation workload is large enough that sequential processing would be impractical. The orchestrating agent manages the knowledge base; subagents only translate or polish within a bounded scope.
-
-### When to parallelize
-
-- Character dialogue polish: one subagent per character or character group
-- Category batching: one subagent per category (UI, items, quests, dialogue) when categories are independent
-- Platform divergence: run Steam and Xbox working-set updates concurrently after a common diff pass
-- Lore pass across multiple file families: subagents read different source families in parallel and report candidates back to the orchestrator
-
-Do not parallelize before `lore_packet`, `style_bible`, and `glossary` are stable. Subagents that lack shared terminology will produce inconsistent output that costs more to fix than parallelism saves.
-
-### Orchestrator responsibilities
-
-- Hold and update the canonical `glossary`, `style_bible`, and `lore_packet`
-- Assign each subagent a bounded scope: exact character name(s), category slice, or platform
-- Provide each subagent with: relevant glossary excerpt, tone card(s), source working set slice, and output format spec
-- Collect subagent proposals before accepting them — require `key`, `source`, `old_target`, `new_target`, `reason`, `confidence`, `surface`, `speaker` fields
-- Merge accepted proposals back into the master working set
-- Run QA gates on the merged output, not on individual subagent outputs
-
-### Subagent instructions template
-
-When spawning a subagent for character tone polish, include:
-
-```
-You are polishing Korean dialogue for [CHARACTER NAME].
-Tone card: [speech level, relationship to player, verbal habits, exceptions]
-Glossary: [relevant excerpt]
-Style bible rules: [relevant rules]
-Source: [working set slice — key, source, current_target columns]
-Output: for each changed line, return key / source / old_target / new_target / reason / confidence
-Do not change keys, placeholders, tags, or schema.
-Do not invent new proper nouns not in the glossary.
-Goal: Korean a local player would accept in this game context, not lightly post-edited machine translation.
-```
-
-### Character review pack workflow
-
-Before assigning tone polish subagents:
-
-1. Build the alias registry (`dialog_character_alias_registry.tsv`) — map all key patterns to canonical character names
-2. Build scene overrides (`dialog_speaker_scene_overrides.tsv`) — handle aliasless scenes
-3. Generate a per-character review pack: pull all `talk/chat/gift/shop/mail/date/bubble/mission/online` keys for that character together
-4. Assign one subagent per character pack, not per file prefix
-5. After subagents return proposals, update the alias registry if unresolved patterns were found
-
-### Parallel session management
-
-When running multiple Codex subagent sessions concurrently:
-
-- Give each session a distinct `AGENTS.md` or inline context that includes its assigned scope, glossary slice, and tone cards
-- Use a shared working directory or branch per agent to avoid file conflicts
-- Collect outputs to a merge staging area before committing to the master working set
-- The orchestrator reviews merged proposals before any QA gate run
+Use parallel subagents only after shared lore, glossary, style, source-language, and batch-contract artifacts are stable. The orchestrator owns the knowledge base and merge decisions; subagents return scoped proposals. Read `references/multi-agent-workflow.md` before dispatching parallel agents.
 
 ## Engine Routing
 
@@ -408,40 +407,7 @@ If multiple engines or storage modes appear, prefer the cheapest high-confidence
 
 ## Font Insertion
 
-Font work is required whenever the game does not natively support Korean glyphs. This is almost always true for retro ROMs and common for older Unity/Unreal titles.
-
-### When font work is needed
-
-- Game renders Korean as boxes, question marks, or missing glyphs
-- Source game ships only with Latin or Japanese fonts
-- Custom tile-based font engine (common in retro ROMs)
-
-### General font checklist
-
-1. **Identify font storage** — tile set in ROM, font atlas texture in Unity/Unreal, or TTF/OTF embedded in assets
-2. **Extract the existing font** — tile editor for ROMs; AssetStudio or similar for Unity; UAssetGUI or similar for Unreal
-3. **Design or source a Korean glyph set** matching the tile size or atlas format
-4. **Check glyph bounds**: height, descent, and width — Korean syllables are wider and taller than Latin; verify nothing is clipped at the bottom or right
-5. **Insert the font** at the correct location and update encoding/atlas tables
-6. **Test across multiple surfaces**: main menu, dialogue boxes, item descriptions, status screens, save/load, tutorials
-7. **Patch line spacing or text-box size** if glyphs overflow the rendered area
-
-### Retro ROM font specifics
-
-See `references/adapter-retro-rom.md` — Font insertion section for ROM-specific steps (tile extraction, encoding table mapping, pointer updates, common clipping fixes).
-
-### Unity font specifics
-
-- Replace or supplement the font asset in the bundle with a Korean-capable TTF/OTF
-- For TMP (TextMeshPro): generate a new TMP font asset with Korean glyph range included
-- For legacy UI Text: replace the font asset reference in the relevant `.assets` or bundle file
-- Verify fallback font chain in case not all glyphs are covered
-
-### Unreal font specifics
-
-- Replace the font face asset with a Korean-capable font
-- Verify composite font fallback chain covers the full Hangul syllable block
-- Test in at least two widget classes (HUD and menu) since they may reference different font assets
+Font work is required whenever the game does not natively support Korean glyphs, especially retro ROMs and older Unity/Unreal titles. Read `references/font-insertion.md` when Korean renders as boxes, question marks, blanks, or clipped glyphs.
 
 ## Common Mistakes
 

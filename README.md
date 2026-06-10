@@ -1,80 +1,192 @@
-# game-korean-patch-pipeline
+# Game Korean Patch Pipeline
 
-AI 에이전트(Claude, Codex)가 게임 한국어 패치를 처음부터 끝까지 진행할 수 있도록 설계된 스킬/파이프라인입니다.
+> AI agents that can take a game from "unknown files on disk" to a Korean localization patch with extraction, speaker worksets, QA gates, playtest handoff, and release packaging.
 
-스타샌드 아일랜드, 바하무트 라군 등 실제 프로젝트에서 축적된 노하우를 바탕으로 만들어졌습니다. 특히 [스타샌드 아일랜드 한글패치](https://github.com/yuniwon/starsand-island-korean-patch)는 이 워크플로를 실제 공개 릴리스에 적용한 사례이며, GitHub Releases 기준 1,270회 이상 다운로드되었습니다.
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue.svg)](LICENSE)
+[![Skill](https://img.shields.io/badge/Codex%20Skill-game--korean--patch--pipeline-111827)](SKILL.md)
+[![Quality Gate](https://img.shields.io/badge/quality%20gates-5%20x%2095%2B-brightgreen)](references/quality-scorecard.md)
+[![Built from real patches](https://img.shields.io/badge/built%20from-real%20shipping%20patches-purple)](#real-world-lineage)
 
-This repository generalizes a real maintainer workflow for game localization patches: discovery, asset inventory, glossary/lore management, translation planning, QA gates, playtest reports, packaging, release notes, and post-release maintenance without committing original game assets.
+`game-korean-patch-pipeline` is a reusable Codex/Claude skill for Korean fan localization projects. It turns a messy game folder into a controlled localization workflow: detect the engine, discover text assets, choose source languages, build lore and style references, split character scripts, dispatch agent batches, score quality, package safely, and maintain releases after game updates.
 
-## 핵심 원칙
+It is built from real public patch operations, including Starsand Island, Mirage 7, and Moonstone Island. The opinionated part is deliberate: game localization fails when agents jump straight into translation. This skill makes discovery, context, QA, and release safety first-class work.
 
-- **발견 → 연구 → 계획 → 번역 → QA → 플레이테스트 → 릴리즈** 순서로 진행
-- 사람은 라인별 검토자가 아닌 **테스터** 역할만 담당
-- 원본 게임 에셋을 직접 수정하지 않고 **워킹셋** 기반으로 작업
-- Steam/Xbox 등 **플랫폼별 분기**를 1등급으로 관리
+## Why This Exists
 
-## 두 가지 모드
+Most AI translation attempts fail in the same places:
 
-- **Bootstrap 모드**: 새 게임 또는 품질이 낮은 기존 번역을 처음부터 시작
-- **Maintenance 모드**: 게임 업데이트, 유저 리포트, 플랫폼 분기 이후 기존 패치 유지보수
+- The agent translates before it understands the engine or text storage.
+- UI, items, quests, subtitles, and dialogue are mixed into one prompt.
+- English is used as the only source even when Japanese or the original language carries better tone.
+- Character speech is inferred from key prefixes instead of actual speaker evidence.
+- QA checks placeholders but misses source drift, runtime subtitle assets, platform forks, or release packaging risk.
 
-## 파일 구성
+This repository turns those lessons into a repeatable skill.
 
+## What It Automates
+
+| Area | Output |
+|---|---|
+| Engine and asset discovery | `engine_report`, `localization_asset_inventory`, `extraction_manifest` |
+| Source-language decisions | `source_language_matrix` with controlling language per surface |
+| Knowledge base | `lore_packet`, `localization_quality_standard`, `style_bible`, glossary |
+| Work planning | category plan, risk tiers, agent batch contracts |
+| Dialogue handling | speaker alias registry, scene overrides, character worksets, unresolved queue |
+| Translation QA | source accuracy, Korean naturalness, terminology, speaker fit, technical fidelity |
+| Runtime QA | platform forks, subtitle-specific assets, smoke checks |
+| Release | clean install/restore checks, package verification, Korean release notice |
+
+## The Five 95+ Gates
+
+Every serious patch run should maintain a `quality_scorecard`. Each gate is scored from `0` to `100`; public-release work must score at least `95` on all five.
+
+1. **Discovery and extraction coverage**: engine evidence, text surfaces, reproducible extraction, platform forks, unknown asset queue.
+2. **Context and source-language control**: lore, glossary, style bible, source-language matrix, fallback reasons.
+3. **Segmentation and agent orchestration**: category split, speaker evidence, batch contracts, safe subagent outputs, progress accounting.
+4. **Korean localization quality**: source meaning, natural Korean, register, terminology, tester feedback loop.
+5. **Technical, runtime, and release QA**: placeholders, tags, runtime application, clean baseline packaging, release metadata.
+
+See [references/quality-scorecard.md](references/quality-scorecard.md) for the exact weighting.
+
+## Quick Start
+
+### 1. Install as a Codex skill
+
+Clone this repository into your Codex skills folder:
+
+```powershell
+git clone https://github.com/yuniwon/game-korean-patch-pipeline.git "$env:USERPROFILE\.codex\skills\game-korean-patch-pipeline"
 ```
-SKILL.md                          # 메인 스킬 (Claude / Hermes Agent)
-agents/openai.yaml                # Codex 연동 설정
-references/
-  workflow.md                     # 전체 작업 순서
-  research-playbook.md            # 웹 리서치 방법론
-  glossary-rules.md               # 용어집 규칙
-  category-design.md              # 카테고리 분류 기준
-  qa-gates.md                     # QA 체크리스트
-  adapter-unity.md                # Unity 엔진 대응
-  adapter-unreal.md               # Unreal 엔진 대응
-  adapter-table-files.md          # JSON/CSV/TSV 파일 대응
+
+If you already have a local checkout, update it:
+
+```powershell
+git -C "$env:USERPROFILE\.codex\skills\game-korean-patch-pipeline" pull --ff-only
+```
+
+### 2. Start a localization project
+
+In the game workspace, ask Codex:
+
+```text
+Use game-korean-patch-pipeline to bootstrap a Korean patch for this game.
+Start with engine detection, localization asset inventory, extraction manifest,
+source-language matrix, and the 95-point quality scorecard.
+```
+
+### 3. Copy the project template
+
+Copy [AGENTS.md](AGENTS.md) into the target game workspace and fill in the game name, platforms, paths, and known divergences.
+
+## Pipeline
+
+```mermaid
+flowchart LR
+  A["Discover engine"] --> B["Inventory text assets"]
+  B --> C["Extract and hash sources"]
+  C --> D["Choose source languages"]
+  D --> E["Build lore, glossary, style bible"]
+  E --> F["Plan categories and agent batches"]
+  F --> G["Translate working sets"]
+  G --> H["QA gates and scorecard"]
+  H --> I["Playtest pack"]
+  I --> J["Release package and notice"]
+```
+
+## Source-Language Policy
+
+The skill does not blindly translate from English.
+
+- Use Japanese first for dialogue, cutscenes, emotional intent, speech level, jokes, sarcasm, and relationship distance when it is present, aligned, and high quality.
+- Use the original language or best available source when Japanese is missing, weak, over-compressed, machine-like, or lower quality than the original.
+- Use approved Korean glossary/current Korean plus original or English evidence for UI labels, item names, locations, controls, system terms, quest conditions, and crafting materials.
+- Record every decision in `source_language_matrix`; unresolved conflicts go to an evidence queue.
+
+## Agent Batch Contracts
+
+Before dispatching subagents, create one contract per batch:
+
+```yaml
+batch_id: dialogue_zephyria_001
+surface: dialogue
+risk_tier: high
+controlling_source_language: ja
+source_paths:
+  - extracted/dialogue/zephyria.tsv
+required_references:
+  - glossary.tsv
+  - style_bible.md
+  - speaker_evidence_index.tsv
+output_schema:
+  - key
+  - source
+  - old_target
+  - new_target
+  - reason
+  - confidence
+allowed_actions:
+  - propose_changes_only
+qa_before_apply:
+  - placeholder_preservation
+  - source_accuracy
+  - speaker_tone
+```
+
+Subagents should return proposals or reviewed change logs. The orchestrator merges, applies, and runs QA.
+
+## Repository Layout
+
+```text
+SKILL.md
+agents/
+  openai.yaml
 assets/
-  glossary_template.tsv           # 용어집 템플릿
-  lore_template.md                # 설정집 템플릿
-  translation_plan_template.md    # 번역 계획 템플릿
-  playtest_report_template.tsv    # 플레이테스트 리포트 템플릿
-  release_notice_template_ko.md   # 한국어 배포 공지 템플릿
+  glossary_template.tsv
+  lore_template.md
+  translation_plan_template.md
+  playtest_report_template.tsv
+  release_notice_template_ko.md
+references/
+  workflow.md
+  quality-scorecard.md
+  research-playbook.md
+  glossary-rules.md
+  category-design.md
+  qa-gates.md
+  multi-agent-workflow.md
+  font-insertion.md
+  adapter-unity.md
+  adapter-unreal.md
+  adapter-table-files.md
+  adapter-retro-rom.md
 scripts/
-  detect_engine.py                # 엔진 자동 감지
-  scan_localization_assets.py     # 로컬라이제이션 에셋 스캔
-  build_lore_packet.py            # 설정집 생성
-  build_translation_plan.py       # 번역 계획 생성
-  build_playtest_report_template.py # 플레이테스트 템플릿 생성
-  score_translation_risk.py       # 번역 리스크 점수화
+  detect_engine.py
+  scan_localization_assets.py
+  build_lore_packet.py
+  build_translation_plan.py
+  build_playtest_report_template.py
+  score_translation_risk.py
 ```
 
-## Claude / Hermes Agent에서 사용하기
+## Real-World Lineage
 
-`SKILL.md`를 스킬로 등록하거나, 대화에서 직접 내용을 참조합니다.
+- [Starsand Island Korean Patch](https://github.com/yuniwon/starsand-island-korean-patch): Steam/Xbox text forks, runtime subtitle fixes, launcher update detection, release ZIP verification, public Korean notices.
+- [Mirage 7 Korean Patch](https://github.com/yuniwon/mirage7-ko-patch): Unity/Addressables analysis, extraction planning, metadata-driven patch workflow.
+- [Moonstone Island Korean Patch](https://github.com/yuniwon/moonstone-island-korean-patch): card, dialogue, quest, package, and playtest workflows.
 
-## Codex에서 사용하기
+## Safety Rules
 
-`agents/openai.yaml`을 Codex 에이전트 설정 폴더에 추가합니다.
+- Do not modify original game assets during translation passes.
+- Do not start bulk translation before discovery, extraction, lore, style, source-language, and batch-contract gates exist.
+- Do not treat AI draft text as final Korean.
+- Do not infer speakers only from key prefixes when better evidence exists.
+- Do not ship a public package that requires command-line knowledge for basic install or restore.
+- Do not publish original game bundles, executables, or full data directories unless rights explicitly allow it.
 
-프로젝트 폴더에 `AGENTS.md`를 만들고 이 레포를 참조하도록 설정하면 Codex가 자동으로 파이프라인을 따릅니다.
+## License
 
-## 실제 적용 사례
+MIT. See [LICENSE](LICENSE).
 
-- [스타샌드 아일랜드 한글패치](https://github.com/yuniwon/starsand-island-korean-patch)
-  - Steam/Xbox PC 분기 관리, 런처/복원 흐름, SHA256 검증, 반복 호환성 릴리스
-  - GitHub Releases 누적 다운로드 1,270회 이상
-- [Mirage 7 한글패치](https://github.com/yuniwon/mirage7-ko-patch)
-  - Unity/Addressables 구조 분석, 원문 추출 경로, 번역 계획/메타데이터 관리
-- [문스톤 아일랜드 한글패치](https://github.com/yuniwon/moonstone-island-korean-patch)
-  - 카드/대화/퀘스트 텍스트 QA, 배포 패키지, 플레이테스트 체크리스트 운영
+## 한국어 요약
 
-## Codex / API를 쓰기 좋은 유지관리 작업
-
-- 게임 업데이트 이후 변경된 원문 diff 분석과 번역 working set 재생성
-- 용어집/말투/플레이스홀더/태그 정합성 검사
-- UI 줄넘침, 내부 키 노출, 카드/퀘스트 매핑 오류 위험도 점수화
-- 릴리스 노트, 플레이테스트 체크리스트, 사용자 제보 triage 초안 작성
-- 플랫폼별 패키징 스크립트와 복원/검증 흐름 리뷰
-
-## 라이선스
-
-MIT
+이 저장소는 게임 한글패치 작업을 AI 에이전트가 처음부터 끝까지 안정적으로 진행하도록 만든 Codex/Claude용 스킬입니다. 엔진 파악, 스크립트 추출, 캐릭터 설정집, 일본어/원문/영어 기준 언어 선택, 캐릭터별 스크립트 분리, 배치 작성, 에이전트 작업 할당, 번역 품질 관리, 릴리즈 패키징까지 하나의 파이프라인으로 묶습니다.

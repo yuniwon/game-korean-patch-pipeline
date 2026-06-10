@@ -7,16 +7,20 @@ Use this file after the main skill triggers and the target game workspace is kno
 Produce these artifacts in order:
 1. `engine_report`
 2. `localization_asset_inventory`
-3. `lore_packet`
-4. `localization_quality_standard`
-5. `style_bible`
-6. `translation_plan`
-7. `translated_working_set`
-8. `qa_report`
-9. `playtest_pack`
-10. `release_decision`
-11. `release_package`
-12. `release_notice`
+3. `extraction_manifest`
+4. `source_language_matrix`
+5. `lore_packet`
+6. `localization_quality_standard`
+7. `style_bible`
+8. `translation_plan`
+9. `agent_batch_contracts`
+10. `quality_scorecard`
+11. `translated_working_set`
+12. `qa_report`
+13. `playtest_pack`
+14. `release_decision`
+15. `release_package`
+16. `release_notice`
 
 Do not skip an artifact because the game "looks simple." The point is reproducibility.
 
@@ -33,6 +37,15 @@ Do not skip an artifact because the game "looks simple." The point is reproducib
 - Find likely localization assets.
 - Separate structured text, binary assets, and support files.
 - Record source path, file type, candidate text columns/keys, and risk in `localization_asset_inventory`.
+- Record extraction commands, hashes, row counts, platform/build versions, failed assets, and runtime-only text candidates in `extraction_manifest`.
+
+### 2.5 Source-language matrix
+
+- Identify available languages and the likely original language.
+- Compare key/row alignment, missing rates, placeholder parity, obvious compression, and translation quality.
+- Select a controlling source per surface. Prefer Japanese for dialogue, cutscenes, emotional intent, speech level, jokes, sarcasm, and relationship distance only when it is present, aligned, and higher-quality than the original or other available sources.
+- Prefer approved glossary/current Korean and original/English evidence for UI labels, item names, system terms, quest conditions, controls, and crafting materials.
+- Record fallback reasons whenever the normally preferred source language is not used.
 
 ### 3. Lore research
 
@@ -59,6 +72,8 @@ Do not skip an artifact because the game "looks simple." The point is reproducib
 - Split work by function and tone domain: UI, systems, tutorial, items, quests, dialogue, other.
 - Mark high-risk slices before batching.
 - Output a `translation_plan` with category, subcategory, batch ownership, and risk notes.
+- Build `agent_batch_contracts` before dispatching any work. Each contract must state the controlling source language, required references, glossary/tone rules, forbidden patterns, output schema, allowed actions, and QA gates.
+- Keep speaker worksets and unresolved/mixed queues separate from UI, narration, and player choices.
 
 ### 5. Draft translation
 
@@ -80,6 +95,8 @@ Do not skip an artifact because the game "looks simple." The point is reproducib
 - Run structural, terminology, consistency, and length-risk checks.
 - Fail closed on placeholder or tag breakage.
 - Output `qa_report` and a retranslation queue when needed.
+- Maintain a five-criterion `quality_scorecard`: discovery/extraction coverage, context/source-language control, segmentation/agent orchestration, Korean localization quality, and technical/runtime/release QA.
+- Do not advance to translation until the first three criteria are at least `95`; do not advance to playtest until segmentation, Korean quality, and technical QA are at least `95`; do not publish until all five criteria are at least `95`.
 
 ### 7. Playtest packaging
 
@@ -105,6 +122,7 @@ Do not skip an artifact because the game "looks simple." The point is reproducib
 ## Hard stops
 
 - Do not start bulk translation before `engine_report`, `localization_asset_inventory`, and `lore_packet` exist.
+- Do not start bulk translation before `extraction_manifest`, `source_language_matrix`, `agent_batch_contracts`, and pre-translation scorecard gates are at least `95`.
 - Do not package a test build before `qa_report` is clean enough for playtesting.
 - Do not overwrite original game assets during normal translation passes.
 - Do not publish a public release until install and restore have been tested from a clean original baseline.
