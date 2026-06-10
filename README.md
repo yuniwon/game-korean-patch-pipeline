@@ -7,6 +7,8 @@
 [![Quality Gate](https://img.shields.io/badge/quality%20gates-5%20x%2095%2B-brightgreen)](references/quality-scorecard.md)
 [![Built from real patches](https://img.shields.io/badge/built%20from-real%20shipping%20patches-purple)](#real-world-lineage)
 
+**Language:** English | [한국어](README_KO.md)
+
 `game-korean-patch-pipeline` is a reusable Codex/Claude skill for Korean fan localization projects. It turns a messy game folder into a controlled localization workflow: detect the engine, discover text assets, choose source languages, build lore and style references, split character scripts, dispatch agent batches, score quality, package safely, and maintain releases after game updates.
 
 It is built from real public patch operations, including Starsand Island, Mirage 7, and Moonstone Island. The opinionated part is deliberate: game localization fails when agents jump straight into translation. This skill makes discovery, context, QA, and release safety first-class work.
